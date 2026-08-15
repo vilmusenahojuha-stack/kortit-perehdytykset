@@ -2,7 +2,7 @@
   "use strict";
 
   // Lisää uuden Apps Script -julkaisun /exec-osoite tähän käyttöönoton lopussa.
-  const API_URL = "";
+  const API_URL = "https://script.google.com/macros/s/AKfycbws1ods-A_0YnJ04cWHU8D5bTdGVg8Z36qA6lsuyEUHYuDlneG_KkOd32ZP8tK1-4Vc/exec";
   const STORAGE_KEY = "kp_api_url_v1";
 
   const $ = (id) => document.getElementById(id);
