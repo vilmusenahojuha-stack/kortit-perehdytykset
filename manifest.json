@@ -1,0 +1,11 @@
+{
+  "name": "Kortit ja perehdytykset",
+  "short_name": "Kortit",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#0b57d0",
+  "lang": "fi",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
