@@ -28,6 +28,21 @@ function setupSystem() {
   SpreadsheetApp.getActive().toast("Kortit ja perehdytykset: asennus valmis.");
 }
 
+function updateUserPins() {
+  const invalid = CONFIG.initialUsers.some(u => !/^\d{4,12}$/.test(String(u.pin)));
+  if (invalid) throw new Error("Vaihda kaikki VAIHDA_...-PIN-arvot 4–12-numeroisiksi ennen päivitystä.");
+  const uniquePins = new Set(CONFIG.initialUsers.map(u => String(u.pin)));
+  if (uniquePins.size !== CONFIG.initialUsers.length) throw new Error("Jokaisella käyttäjällä täytyy olla eri PIN-koodi.");
+  const sheet = getSheet_(CONFIG.usersSheet);
+  const rows = readObjects_(sheet);
+  CONFIG.initialUsers.forEach(user => {
+    const index = rows.findIndex(row => String(row.name) === user.name);
+    if (index < 0) throw new Error("Käyttäjää ei löytynyt: " + user.name);
+    sheet.getRange(index + 2, USER_HEADERS.indexOf("pinHash") + 1).setValue(hashPin_(user.pin));
+  });
+  SpreadsheetApp.getActive().toast("Henkilökohtaiset PIN-koodit päivitetty.");
+}
+
 function doGet() { return json_({ ok: true, service: "kortit-perehdytykset", version: 2 }); }
 
 function doPost(e) {
