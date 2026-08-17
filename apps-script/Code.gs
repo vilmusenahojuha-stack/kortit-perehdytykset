@@ -45,7 +45,7 @@ function doPost(e) {
       const tokenUser = verifyWorkToken_(input.token);
       return json_({ ok: true, user: tokenUser, status: statusSummaryByUser_(tokenUser) });
     }
-    const actor = authenticate_(input.pin);
+    const actor = authenticateRequest_(input);
     if (action === "login") return json_({ ok: true, user: publicUser_(actor), users: actor.role === "admin" ? listUsers_() : [] });
     if (action === "listMine") return json_({ ok: true, records: listRecords_().filter(r => r.user === actor.name) });
     if (action === "listAll") { requireAdmin_(actor); return json_({ ok: true, records: listRecords_(), users: listUsers_() }); }
@@ -104,6 +104,16 @@ function signWorkToken_(payload) {
   let secret = properties.getProperty("WORK_TOKEN_SECRET");
   if (!secret) { secret = Utilities.getUuid() + Utilities.getUuid(); properties.setProperty("WORK_TOKEN_SECRET", secret); }
   return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(payload, secret)).replace(/=+$/, "");
+}
+
+function authenticateRequest_(input) {
+  if (input && input.workToken) {
+    const userName = verifyWorkToken_(input.workToken);
+    const user = listUsers_().find(u => u.name === userName);
+    if (!user) throw new Error("Työntekijää ei löytynyt.");
+    return publicUser_(user);
+  }
+  return authenticate_(input && input.pin);
 }
 
 function authenticate_(pin) {
