@@ -6,7 +6,7 @@
   const STORAGE_KEY = "kp_api_url_v1";
 
   const $ = (id) => document.getElementById(id);
-  const state = { pin: "", user: null, users: [], records: [], typeFilter: "all", statusFilter: "all", editingId: "" };
+  const state = { pin: "", workToken: "", user: null, users: [], records: [], typeFilter: "all", statusFilter: "all", editingId: "" };
 
   const apiUrl = () => (API_URL || localStorage.getItem(STORAGE_KEY) || "").trim();
   const pad2 = (n) => String(n).padStart(2, "0");
@@ -48,7 +48,7 @@
   async function api(action, data = {}) {
     const url = apiUrl();
     if (!url) throw new Error("Apps Script -osoite puuttuu.");
-    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, pin: state.pin, ...data }) });
+    const response = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action, pin: state.pin, workToken: state.workToken, ...data }) });
     const text = await response.text();
     let json;
     try { json = JSON.parse(text); } catch { throw new Error("Palvelimen vastaus ei kelpaa."); }
@@ -66,7 +66,7 @@
   async function login() {
     const pin = $("pinInput").value.trim();
     if (!pin) return $("loginMessage").textContent = "Syötä PIN-koodi.";
-    state.pin = pin; setBusy($("loginBtn"), true); $("loginMessage").textContent = "";
+    state.pin = pin; state.workToken = ""; setBusy($("loginBtn"), true); $("loginMessage").textContent = "";
     try {
       const result = await api("login");
       state.user = result.user; state.users = result.users || [];
@@ -93,7 +93,7 @@
   }
 
   function logout() {
-    state.pin = ""; state.user = null; state.records = []; sessionStorage.removeItem("kp_pin");
+    state.pin = ""; state.workToken = ""; state.user = null; state.records = []; sessionStorage.removeItem("kp_pin"); sessionStorage.removeItem("kp_work_token");
     $("pinInput").value = ""; $("appView").classList.add("hidden"); $("loginView").classList.remove("hidden"); $("logoutBtn").classList.add("hidden"); $("subtitle").textContent = "Kirjaudu PIN-koodilla";
   }
 
@@ -165,8 +165,18 @@
   }
 
   async function restoreSession() {
-    const pin = sessionStorage.getItem("kp_pin"); if (!pin || !apiUrl()) return;
-    state.pin = pin;
+    if (!apiUrl()) return;
+    const hash = new URLSearchParams(location.hash.slice(1));
+    const incomingToken = hash.get("workToken") || "";
+    if (incomingToken) {
+      history.replaceState(null, "", location.pathname + location.search);
+      sessionStorage.setItem("kp_work_token", incomingToken);
+      sessionStorage.removeItem("kp_pin");
+    }
+    const workToken = incomingToken || sessionStorage.getItem("kp_work_token") || "";
+    const pin = sessionStorage.getItem("kp_pin") || "";
+    if (!workToken && !pin) return;
+    state.workToken = workToken; state.pin = workToken ? "" : pin;
     try { const result = await api("login"); state.user = result.user; state.users = result.users || []; await loadRecords(); showApp(); }
     catch { logout(); }
   }
