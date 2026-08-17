@@ -85,7 +85,7 @@
   }
 
   function showApp() {
-    $("loginView").classList.add("hidden"); $("appView").classList.remove("hidden"); $("logoutBtn").classList.remove("hidden");
+    $("loadingView").classList.add("hidden"); $("loginView").classList.add("hidden"); $("appView").classList.remove("hidden"); $("logoutBtn").classList.remove("hidden");
     $("subtitle").textContent = state.user.role === "admin" ? `${state.user.name} – ylläpitäjä` : state.user.name;
     $("adminTools").classList.toggle("hidden", state.user.role !== "admin");
     $("ownerField").classList.toggle("hidden", state.user.role !== "admin");
@@ -94,7 +94,7 @@
 
   function logout() {
     state.pin = ""; state.workToken = ""; state.user = null; state.records = []; sessionStorage.removeItem("kp_pin"); sessionStorage.removeItem("kp_work_token");
-    $("pinInput").value = ""; $("appView").classList.add("hidden"); $("loginView").classList.remove("hidden"); $("logoutBtn").classList.add("hidden"); $("subtitle").textContent = "Kirjaudu PIN-koodilla";
+    $("pinInput").value = ""; $("loadingView").classList.add("hidden"); $("appView").classList.add("hidden"); $("loginView").classList.remove("hidden"); $("logoutBtn").classList.add("hidden"); $("subtitle").textContent = "Kirjaudu PIN-koodilla";
   }
 
   function fillUsers() {
@@ -165,7 +165,7 @@
   }
 
   async function restoreSession() {
-    if (!apiUrl()) return;
+    if (!apiUrl()) { $("loadingView").classList.add("hidden"); $("loginView").classList.remove("hidden"); return; }
     const hash = new URLSearchParams(location.hash.slice(1));
     const incomingToken = hash.get("workToken") || "";
     if (incomingToken) {
@@ -175,7 +175,7 @@
     }
     const workToken = incomingToken || sessionStorage.getItem("kp_work_token") || "";
     const pin = sessionStorage.getItem("kp_pin") || "";
-    if (!workToken && !pin) return;
+    if (!workToken && !pin) { $("loadingView").classList.add("hidden"); $("loginView").classList.remove("hidden"); return; }
     state.workToken = workToken; state.pin = workToken ? "" : pin;
     try { const result = await api("login"); state.user = result.user; state.users = result.users || []; await loadRecords(); showApp(); }
     catch { logout(); }
