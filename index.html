@@ -19,7 +19,13 @@
   </header>
 
   <main>
-    <section id="loginView" class="panel narrow">
+    <section id="loadingView" class="panel narrow loading-panel" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <h2>Avataan korttejasi…</h2>
+      <p class="muted">Tarkistetaan turvallinen kirjautuminen.</p>
+    </section>
+
+    <section id="loginView" class="panel narrow hidden">
       <h2>Kirjautuminen</h2>
       <p class="muted">Syötä henkilökohtainen PIN-koodisi.</p>
       <label>PIN-koodi
