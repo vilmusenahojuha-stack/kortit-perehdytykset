@@ -36,6 +36,15 @@ function doPost(e) {
     const input = JSON.parse((e && e.postData && e.postData.contents) || "{}");
     const action = String(input.action || "");
     if (!action) throw new Error("Toiminto puuttuu.");
+    if (action === "workLogin") {
+      const workActor = authenticate_(input.pin);
+      if (workActor.name !== String(input.user || "").trim()) throw new Error("PIN ei kuulu valitulle käyttäjälle.");
+      return json_({ ok: true, user: publicUser_(workActor), token: createWorkToken_(workActor.name), status: statusSummaryByUser_(workActor.name) });
+    }
+    if (action === "workStatus") {
+      const tokenUser = verifyWorkToken_(input.token);
+      return json_({ ok: true, user: tokenUser, status: statusSummaryByUser_(tokenUser) });
+    }
     const actor = authenticate_(input.pin);
     if (action === "login") return json_({ ok: true, user: publicUser_(actor), users: actor.role === "admin" ? listUsers_() : [] });
     if (action === "listMine") return json_({ ok: true, records: listRecords_().filter(r => r.user === actor.name) });
@@ -49,6 +58,52 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (_) {}
   }
+}
+
+function statusSummaryByUser_(userName) {
+  const user = String(userName || "").trim();
+  if (!user || !listUsers_().some(u => u.name === user)) throw new Error("Työntekijää ei löytynyt.");
+  const counts = { valid: 0, warning: 0, expired: 0, total: 0 };
+  listRecords_().filter(r => r.user === user).forEach(r => { counts[recordStatus_(r)]++; counts.total++; });
+  return counts;
+}
+function recordStatus_(record) {
+  const today = startOfDay_(new Date()), expires = recordExpiryDate_(record);
+  if (today.getTime() > expires.getTime()) return "expired";
+  return today.getTime() >= recordWarningDate_(record).getTime() ? "warning" : "valid";
+}
+function recordExpiryDate_(record) {
+  const year = Number(record.expiresYear), month = Number(record.expiresMonth);
+  const day = Number(record.expiresDay) || new Date(year, month, 0).getDate();
+  return new Date(year, month - 1, day, 23, 59, 59, 999);
+}
+function recordWarningDate_(record) {
+  const months = record.type === "orientation" ? 1 : 2;
+  if (!record.expiresDay) return new Date(Number(record.expiresYear), Number(record.expiresMonth) - 1 - months, 1);
+  const expires = recordExpiryDate_(record), first = new Date(expires.getFullYear(), expires.getMonth() - months, 1);
+  const day = Math.min(expires.getDate(), new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate());
+  return new Date(first.getFullYear(), first.getMonth(), day);
+}
+function startOfDay_(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
+function createWorkToken_(userName) {
+  const payload = Utilities.base64EncodeWebSafe(JSON.stringify({ user: userName, expires: Date.now() + 12 * 60 * 60 * 1000 })).replace(/=+$/, "");
+  return payload + "." + signWorkToken_(payload);
+}
+function verifyWorkToken_(token) {
+  const parts = String(token || "").split(".");
+  if (parts.length !== 2 || parts[1] !== signWorkToken_(parts[0])) throw new Error("Työaikaistunto ei kelpaa.");
+  let data;
+  try { data = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString()); }
+  catch (_) { throw new Error("Työaikaistunto ei kelpaa."); }
+  if (!data.user || Number(data.expires) < Date.now()) throw new Error("Työaikaistunto on vanhentunut.");
+  if (!listUsers_().some(u => u.name === data.user)) throw new Error("Työntekijää ei löytynyt.");
+  return String(data.user);
+}
+function signWorkToken_(payload) {
+  const properties = PropertiesService.getScriptProperties();
+  let secret = properties.getProperty("WORK_TOKEN_SECRET");
+  if (!secret) { secret = Utilities.getUuid() + Utilities.getUuid(); properties.setProperty("WORK_TOKEN_SECRET", secret); }
+  return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(payload, secret)).replace(/=+$/, "");
 }
 
 function authenticate_(pin) {
