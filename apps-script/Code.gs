@@ -28,7 +28,7 @@ function setupSystem() {
   SpreadsheetApp.getActive().toast("Kortit ja perehdytykset: asennus valmis.");
 }
 
-function doGet() { return json_({ ok: true, service: "kortit-perehdytykset", version: 1 }); }
+function doGet() { return json_({ ok: true, service: "kortit-perehdytykset", version: 2 }); }
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
