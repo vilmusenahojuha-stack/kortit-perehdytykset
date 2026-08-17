@@ -86,7 +86,7 @@ function recordWarningDate_(record) {
 }
 function startOfDay_(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
 function createWorkToken_(userName) {
-  const payload = Utilities.base64EncodeWebSafe(JSON.stringify({ user: userName, expires: Date.now() + 12 * 60 * 60 * 1000 })).replace(/=+$/, "");
+  const payload = Utilities.base64EncodeWebSafe(JSON.stringify({ user: userName, expires: Date.now() + 18 * 60 * 60 * 1000 })).replace(/=+$/, "");
   return payload + "." + signWorkToken_(payload);
 }
 function verifyWorkToken_(token) {
