@@ -52,8 +52,17 @@ function doPost(e) {
     const action = String(input.action || "");
     if (!action) throw new Error("Toiminto puuttuu.");
     if (action === "workLogin") {
-      const workActor = authenticate_(input.pin);
-      if (workActor.name !== String(input.user || "").trim()) throw new Error("PIN ei kuulu valitulle käyttäjälle.");
+      const requestedUser = String(input.user || "").trim();
+      assertWorkLoginAllowed_(requestedUser);
+      let workActor;
+      try {
+        workActor = authenticate_(input.pin);
+        if (workActor.name !== requestedUser) throw new Error("Väärä PIN-koodi.");
+      } catch (error) {
+        recordFailedWorkLogin_(requestedUser);
+        throw new Error("Väärä PIN-koodi.");
+      }
+      clearFailedWorkLogins_(requestedUser);
       return json_({ ok: true, user: publicUser_(workActor), token: createWorkToken_(workActor.name), status: statusSummaryByUser_(workActor.name) });
     }
     if (action === "workStatus") {
@@ -73,6 +82,25 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (_) {}
   }
+}
+
+function workLoginCacheKey_(userName) {
+  const safe = String(userName || "tuntematon").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+  return "work_login_fail_" + safe;
+}
+function assertWorkLoginAllowed_(userName) {
+  const cache = CacheService.getScriptCache();
+  const attempts = Number(cache.get(workLoginCacheKey_(userName)) || 0);
+  if (attempts >= 8) throw new Error("Liikaa kirjautumisyrityksiä. Odota 10 minuuttia.");
+}
+function recordFailedWorkLogin_(userName) {
+  const cache = CacheService.getScriptCache();
+  const key = workLoginCacheKey_(userName);
+  const attempts = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(attempts), 600);
+}
+function clearFailedWorkLogins_(userName) {
+  CacheService.getScriptCache().remove(workLoginCacheKey_(userName));
 }
 
 function statusSummaryByUser_(userName) {
